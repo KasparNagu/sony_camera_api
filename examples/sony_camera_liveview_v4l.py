@@ -8,10 +8,11 @@ import cv2
 import numpy
 import fcntl
 import os
+import sys
 
-def liveview():
+def liveview(bindAddress=None):
     # Connect and set-up camera
-    search = ControlPoint(bindAddress="192.168.122.183")
+    search = ControlPoint(bindAddress=bindAddress)
     cameras =  search.discover(5)
 
     if len(cameras):
@@ -91,7 +92,7 @@ class V4l2Writer:
 		os.write(self.device, dataoutbin)
 if __name__ == "__main__":
     v4l2w = V4l2Writer('/dev/video2')
-    handler = liveview()
+    handler = liveview(sys.argv[1] if len(sys.argv)>1 else None)
     while True:
  		frame = handler()
                	image = numpy.asarray(bytearray(frame), dtype="uint8")

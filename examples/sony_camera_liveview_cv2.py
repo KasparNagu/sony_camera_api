@@ -5,10 +5,11 @@ from pysony import SonyAPI, ControlPoint
 import time
 import cv2
 import numpy
+import sys
 
-def liveview():
+def liveview(bindAddress=None):
     # Connect and set-up camera
-    search = ControlPoint(bindAddress="192.168.122.183")
+    search = ControlPoint(bindAddress=bindAddress)
     cameras =  search.discover(5)
 
     if len(cameras):
@@ -39,7 +40,7 @@ def liveview():
 
 if __name__ == "__main__":
     cv2.namedWindow("frame")
-    handler = liveview()
+    handler = liveview(sys.argv[1] if len(sys.argv)>1 else None)
     while True:
  		frame = handler()
 		print(len(frame))
