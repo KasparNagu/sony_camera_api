@@ -32,7 +32,7 @@ def liveview(bindAddress=None):
     sizes = camera.getLiveviewSize()
     print('Supported liveview size:', sizes)
     # url = camera.liveview("M")
-    url = camera.liveview()
+    url = camera.liveview("M")
 
     lst = SonyAPI.LiveviewStreamThread(url)
     lst.setDaemon(True)
@@ -47,6 +47,8 @@ class V4l2Writer:
 		self.width = 0
 		self.height = 0
 		self.isRgb = False
+		self.lastSpeedOutput = time.time()
+		self.nFramesSinceOutput = 0
 	def init(self,width,height):
 		if self.width == width and self.height == height:
 			return
@@ -76,7 +78,11 @@ class V4l2Writer:
 			format.fmt.pix.sizeimage = format.fmt.pix.width * format.fmt.pix.height * 2
 			format.fmt.pix.colorspace = v4l2.V4L2_COLORSPACE_JPEG 
 		fcntl.ioctl(self.device, v4l2.VIDIOC_S_FMT, format)
-        	self.buffer = numpy.zeros((format.fmt.pix.height, 2*format.fmt.pix.width), dtype=numpy.uint8)
+		if(width != format.fmt.pix.width or height != format.fmt.pix.height):
+			print("Warning: Input and v4l output dimensions missmatch: in=%dx%d v4l=%dx%d" % (
+				width,height,format.fmt.pix.width,format.fmt.pix.height))
+		self.buffer = numpy.zeros((height, 2*width), dtype=numpy.uint8)
+#        	self.buffer = numpy.zeros((format.fmt.pix.height, 2*format.fmt.pix.width), dtype=numpy.uint8)
 	def write(self,data):
 		shape = data.shape
 		self.init(shape[1],shape[0])
@@ -90,6 +96,14 @@ class V4l2Writer:
 				self.buffer[i,3::4] = yuv[i,::2,2]
 			dataoutbin = self.buffer.tostring()
 		os.write(self.device, dataoutbin)
+		self.nFramesSinceOutput += 1
+		if self.nFramesSinceOutput > 30:
+			curT = time.time()
+			fps = 1.0 * self.nFramesSinceOutput / (curT - self.lastSpeedOutput)
+			sys.stdout.write("fps=%g\r" % fps)
+			sys.stdout.flush()
+			self.nFramesSinceOutput = 0
+			self.lastSpeedOutput = time.time()
 if __name__ == "__main__":
     v4l2w = V4l2Writer('/dev/video2')
     handler = liveview(sys.argv[1] if len(sys.argv)>1 else None)
