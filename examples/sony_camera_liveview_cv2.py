@@ -7,7 +7,6 @@ import cv2
 import numpy
 import sys
 import threading
-import v4l2
 import fcntl
 import os
 
@@ -23,13 +22,13 @@ def liveview(bindAddress=None, size=None):
         quit()
 
     if not size is None:
-	    sizes = camera.getSupportedLiveviewSize();
-	    print('Supported liveview size:', sizes)
-	    sizes = camera.getAvailableLiveviewSize();
-	    print('Available liveview size:', sizes)
-	    if 'result' in sizes and not size in sizes['result']:
-		print("try stopping liveview")
-		camera.stopLiveview()
+    	sizes = camera.getSupportedLiveviewSize();
+    	print('Supported liveview size:', sizes)
+    	sizes = camera.getAvailableLiveviewSize();
+    	print('Available liveview size:', sizes)
+    	if 'result' in sizes and not size in sizes['result']:
+    		print("try stopping liveview")
+    		camera.stopLiveview()
 
 
     mode = camera.getAvailableApiList()
@@ -59,6 +58,7 @@ class V4l2Writer:
 		self.height = 0
 		self.isRgb = False
 	def init(self,width,height):
+		import v4l2
 		if self.width == width and self.height == height:
 			return
 		if not self.device is None:
@@ -193,34 +193,34 @@ class Status:
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Connects to a sony camera and streams to cv2 window and v4l. Shortcuts: q/esc=quit, m=switch focus mode, e=show info, up/down/pgup/pgdown=change aperture.",
-       formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--v4l-device',default=None,help="Stream to v4lloopback-device")
-    parser.add_argument('--no-window',default=False,action='store_true',help='Do not show cv2 window')
-    parser.add_argument('--bind',default=None,help="Bind brodcasting to this ip address. Usful when used with multiple network devices.")
-    parser.add_argument('--window-name',default="Liveview",help="Name of the cv2 window")
-    parser.add_argument('--size',default=None,help="Liveview size to specifiy, e.g M or L")
+	import argparse
+	parser = argparse.ArgumentParser(description="Connects to a sony camera and streams to cv2 window and v4l. Shortcuts: q/esc=quit, m=switch focus mode, e=show info, up/down/pgup/pgdown=change aperture.",
+	formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('--v4l-device',default=None,help="Stream to v4lloopback-device")
+	parser.add_argument('--no-window',default=False,action='store_true',help='Do not show cv2 window')
+	parser.add_argument('--bind',default=None,help="Bind brodcasting to this ip address. Usful when used with multiple network devices.")
+	parser.add_argument('--window-name',default="Liveview",help="Name of the cv2 window")
+	parser.add_argument('--size',default=None,help="Liveview size to specifiy, e.g M or L")
 
-    args = parser.parse_args();
-    cv2.namedWindow(args.window_name)
+	args = parser.parse_args();
+	cv2.namedWindow(args.window_name)
 
-    handler,camera = liveview(args.bind, args.size)
-    if not args.v4l_device is None:
-	    v4l2w = V4l2Writer(args.v4l_device)
-    else:
-            v4l2w = None
-    status = Status(camera)
-    afThread = AFThread(camera)
-    afThread.start()
-    def cv2click(event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-		afThread.updateAF(x,y)
-    if not args.no_window:
-	    cv2.setMouseCallback(args.window_name, cv2click)
-    while True:
- 		frame = handler()
-        	image = numpy.asarray(bytearray(frame), dtype="uint8")
+	handler,camera = liveview(args.bind, args.size)
+	if not args.v4l_device is None:
+		v4l2w = V4l2Writer(args.v4l_device)
+	else:
+		v4l2w = None
+	status = Status(camera)
+	afThread = AFThread(camera)
+	afThread.start()
+	def cv2click(event, x, y, flags, param):
+		if event == cv2.EVENT_LBUTTONDOWN:
+			afThread.updateAF(x,y)
+	if not args.no_window:
+		cv2.setMouseCallback(args.window_name, cv2click)
+	while True:
+		frame = handler()
+		image = numpy.asarray(bytearray(frame), dtype="uint8")
 		image = cv2.imdecode(image, cv2.IMREAD_COLOR)
 		if not v4l2w is None:
 			v4l2w.write(image)
@@ -275,6 +275,8 @@ if __name__ == "__main__":
 			next = fnrs[i2]
 			print("next=%s" % next)
 			camera.setFNumber(next)
+			status.updateStatus()
+			status.fNumber = next
 		elif key != 255:
 			print("key=%s" % key)
 			status.updateStatus()
