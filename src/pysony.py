@@ -41,8 +41,8 @@ class ControlPoint(object):
     def __init__(self, addr=SSDP_ADDR, port=SSDP_PORT,bindAddress=None):
         self.addr, self.port = addr, port
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	if not bindAddress is None:
-		sock.bind((bindAddress,0))
+        if not bindAddress is None:
+            sock.bind((bindAddress,0))
         sock.settimeout(0.1)
         # Set the socket to broadcast mode.
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
