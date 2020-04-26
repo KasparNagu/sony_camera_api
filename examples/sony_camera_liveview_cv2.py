@@ -191,6 +191,45 @@ class Status:
 			alpha = 1 - (t-2)/8.
 			cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
 
+class ImageOverlayer:
+	def __init__(self,img):
+		self.imageOrignal = cv2.imread(img,cv2.IMREAD_COLOR)
+		self.imageResized = None
+		self.mix = 0.5
+	def resize(self,tgt):
+		if not self.imageResized is None:
+			tgtShape = tgt.shape
+			resShape = self.imageResized.shape
+			if tgtShape[0] == resShape[0] and tgtShape[1] == resShape[1]:
+				return
+		w = self.imageOrignal.shape[1]
+                h = self.imageOrignal.shape[0]
+		wtgt = tgt.shape[1]
+		htgt = tgt.shape[0]
+
+                widthResized = int(1.0*w*htgt/h)
+                if widthResized > wtgt:
+                        heightResized = int(1.0*h*wtgt/w)
+                        widthResized = wtgt
+                else:
+                        heightResized = htgt
+                image = cv2.resize(self.imageOrignal,(widthResized,heightResized))
+                bx = (wtgt - image.shape[1])
+                by = (htgt - image.shape[0])
+                bx1 = bx/2
+                bx2 = bx - bx1
+                by1 = by/2
+                by2 = by - by1
+                self.imageResized = cv2.copyMakeBorder(image,by1,by2,bx1,bx2,cv2.BORDER_CONSTANT)
+	def overlay(self,image):
+		self.resize(image)
+		return cv2.addWeighted(image,self.mix,self.imageResized,1-self.mix,0)
+	def changeMix(self,offset):
+		self.mix += offset
+		if self.mix < 0:
+			self.mix = 0
+		elif self.mix > 1:
+			self.mix = 1
 
 if __name__ == "__main__":
 	import argparse
@@ -201,8 +240,14 @@ if __name__ == "__main__":
 	parser.add_argument('--bind',default=None,help="Bind brodcasting to this ip address. Usful when used with multiple network devices.")
 	parser.add_argument('--window-name',default="Liveview",help="Name of the cv2 window")
 	parser.add_argument('--size',default=None,help="Liveview size to specifiy, e.g M or L")
+	parser.add_argument('--overlay-image',default=None,help="Image to overlay")
 
 	args = parser.parse_args();
+
+	if args.overlay_image is None:
+		imageOverlayer = None
+	else:
+		imageOverlayer = ImageOverlayer(args.overlay_image)
 	cv2.namedWindow(args.window_name)
 
 	handler,camera = liveview(args.bind, args.size)
@@ -222,6 +267,8 @@ if __name__ == "__main__":
 		frame = handler()
 		image = numpy.asarray(bytearray(frame), dtype="uint8")
 		image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+		if not imageOverlayer is None:
+			image = imageOverlayer.overlay(image)
 		if not v4l2w is None:
 			v4l2w.write(image)
 		status.frame()
@@ -277,6 +324,9 @@ if __name__ == "__main__":
 			camera.setFNumber(next)
 			status.updateStatus()
 			status.fNumber = next
+		elif key == 81 or key == 83:
+			if not imageOverlayer is None:
+				imageOverlayer.changeMix(0.1 if key == 81 else -0.1)
 		elif key != 255:
 			print("key=%s" % key)
 			status.updateStatus()
