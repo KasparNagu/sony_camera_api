@@ -9,6 +9,7 @@ import sys
 import threading
 import fcntl
 import os
+import datetime
 
 def liveview(bindAddress=None, size=None):
     # Connect and set-up camera
@@ -298,6 +299,8 @@ if __name__ == "__main__":
 		elif key & 0xFF == ord('c'):
 			ret = camera.cancelTouchAFPosition()
 			print(ret)
+		elif key & 0xFF == ord('s'):
+			cv2.imwrite("img_%s.jpg" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f"),image)
 		elif key == 82 or key == 84 or key == 85 or key == 86:
 			fnrs = camera.getSupportedFNumber()['result'][0]
 #			fnrs = camera.getAvailableFNumber()['result'][0]
