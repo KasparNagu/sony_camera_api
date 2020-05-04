@@ -242,6 +242,7 @@ if __name__ == "__main__":
 	parser.add_argument('--window-name',default="Liveview",help="Name of the cv2 window")
 	parser.add_argument('--size',default=None,help="Liveview size to specifiy, e.g M or L")
 	parser.add_argument('--overlay-image',default=None,help="Image to overlay")
+	parser.add_argument('--rotate',default=None,help="Rotation")
 
 	args = parser.parse_args();
 
@@ -262,12 +263,25 @@ if __name__ == "__main__":
 	def cv2click(event, x, y, flags, param):
 		if event == cv2.EVENT_LBUTTONDOWN:
 			afThread.updateAF(x,y)
+		elif event == cv2.EVENT_RBUTTONDOWN:
+			focusMode = camera.getFocusMode()
+			if "MF" in focusMode['result']:
+				print("Setting AF")
+				ret = camera.setFocusMode(["AF-S"])
+			else:
+				print("Setting MF")
+				ret = camera.setFocusMode(["MF"])
 	if not args.no_window:
 		cv2.setMouseCallback(args.window_name, cv2click)
 	while True:
 		frame = handler()
 		image = numpy.asarray(bytearray(frame), dtype="uint8")
 		image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+		if not args.rotate is None:
+			if args.rotate == "90":
+				image = cv2.rotate(image,cv2.ROTATE_90_CLOCKWISE)
+			elif args.rotate == "-90":
+				image = cv2.rotate(image,cv2.ROTATE_90_COUNTERCLOCKWISE)				
 		if not imageOverlayer is None:
 			image = imageOverlayer.overlay(image)
 		if not v4l2w is None:
